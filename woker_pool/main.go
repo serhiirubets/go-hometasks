@@ -26,8 +26,8 @@ func main() {
 	for w := 1; w <= workerPoolNum; w++ {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			runNumSquareWorker(jobs, results)
-			wg.Done()
 		}()
 	}
 
@@ -42,8 +42,7 @@ func main() {
 
 	close(jobs)
 
-	for range nums {
-		r := <-results
+	for r := range results {
 		fmt.Println(r)
 	}
 }
