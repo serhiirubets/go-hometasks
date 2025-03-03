@@ -28,21 +28,21 @@ func NewCache(ttl time.Duration) *Cache {
 	return cache
 }
 
-func (c *Cache) Get(uuid string) *Profile {
+func (c *Cache) Get(uuid string) Profile {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	p, ok := c.data[uuid]
 
 	if !ok {
-		return nil
+		return Profile{}
 	}
 
 	if time.Now().After(p.expireAt) {
-		return nil
+		return Profile{}
 	}
 
-	return p.profile
+	return *p.profile
 }
 
 func (c *Cache) Set(uuid string, p *Profile) {
