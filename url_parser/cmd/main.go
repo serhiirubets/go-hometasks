@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
+	"time"
 )
 
 func main() {
@@ -19,17 +21,35 @@ func main() {
 	}
 
 	resChan := make(chan string, len(urls))
+	errChan := make(chan string, len(urls))
 
-	wg := &sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 	wg.Add(len(urls))
 
 	for _, url := range urls {
 		go func(url string) {
 			defer wg.Done()
-			_, err := http.Get(url)
+
+			client := &http.Client{
+				Timeout: 5 * time.Second,
+			}
+
+			resp, err := client.Get(url)
 
 			if err != nil {
-				resChan <- fmt.Sprintf("Url not ok: %s", url)
+				errChan <- fmt.Sprintf("Url not ok: %s", url)
+				return
+			}
+
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					errChan <- err.Error()
+				}
+			}(resp.Body)
+
+			if err != nil {
+				errChan <- fmt.Sprintf("Url not ok: %s", url)
 				return
 			}
 
@@ -40,9 +60,14 @@ func main() {
 	go func() {
 		wg.Wait()
 		close(resChan)
+		close(errChan)
 	}()
 
 	for u := range resChan {
 		fmt.Println(u)
+	}
+
+	for err := range errChan {
+		fmt.Println(err)
 	}
 }
